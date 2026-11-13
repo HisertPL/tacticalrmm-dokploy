@@ -1,0 +1,224 @@
+services:
+  tactical-postgres:
+    image: postgres:13-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tacticalrmm
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d tacticalrmm"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - api-db
+
+  tactical-redis:
+    image: redis:6.0-alpine
+    user: "1000:1000"
+    command: redis-server
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - redis
+
+  tactical-mongodb:
+    image: mongo:4.4
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+      MONGO_INITDB_DATABASE: meshcentral
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mesh-db
+
+  tactical-meshcentral:
+    image: tacticalrmm/tactical-meshcentral:1.6.1
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      MESH_HOST: ${MESH_HOST}
+      MESH_USER: ${MESH_USER}
+      MESH_PASS: ${MESH_PASS}
+      MONGODB_USER: ${MONGODB_USER}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+      MESH_PERSISTENT_CONFIG: "1"
+    volumes:
+      - tactical_data:/opt/tactical
+      - mesh_data:/home/node/app/meshcentral-data
+    depends_on:
+      - tactical-mongodb
+    networks:
+      proxy:
+        aliases:
+          - ${MESH_HOST}
+      mesh-db: {}
+
+  tactical-init:
+    image: tacticalrmm/tactical:1.6.1
+    restart: on-failure
+    command: ["tactical-init"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASS: ${POSTGRES_PASS}
+      APP_HOST: ${APP_HOST}
+      API_HOST: ${API_HOST}
+      CSRF_COOKIE_DOMAIN: ${CSRF_COOKIE_DOMAIN}
+      SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN}
+      MESH_USER: ${MESH_USER}
+      MESH_HOST: ${MESH_HOST}
+      TRMM_USER: ${TRMM_USER}
+      TRMM_PASS: ${TRMM_PASS}
+      TRMM_DISABLE_WEB_TERMINAL: "True"
+      TRMM_DISABLE_SERVER_SCRIPTS: "True"
+      TRMM_DISABLE_SSO: "False"
+    volumes:
+      - tactical_data:/opt/tactical
+      - mesh_data:/meshcentral-data
+      - mongo_data:/mongo/data/db
+      - redis_data:/redis/data
+    depends_on:
+      - tactical-postgres
+      - tactical-meshcentral
+      - tactical-redis
+    networks:
+      - api-db
+      - proxy
+      - redis
+
+  tactical-nats:
+    image: tacticalrmm/tactical-nats:1.6.1
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      API_HOST: ${API_HOST}
+    volumes:
+      - tactical_data:/opt/tactical
+    networks:
+      api-db: {}
+      proxy:
+        aliases:
+          - ${API_HOST}
+
+  tactical-frontend:
+    image: tacticalrmm/tactical-frontend:1.6.1
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      API_HOST: ${API_HOST}
+    volumes:
+      - tactical_data:/opt/tactical
+    networks:
+      - proxy
+
+  tactical-backend:
+    image: tacticalrmm/tactical:1.6.1
+    user: "1000:1000"
+    command: ["tactical-backend"]
+    restart: unless-stopped
+    volumes:
+      - tactical_data:/opt/tactical
+    depends_on:
+      - tactical-postgres
+    networks:
+      - proxy
+      - api-db
+      - redis
+
+  tactical-websockets:
+    image: tacticalrmm/tactical:1.6.1
+    user: "1000:1000"
+    command: ["tactical-websockets"]
+    restart: unless-stopped
+    volumes:
+      - tactical_data:/opt/tactical
+    depends_on:
+      - tactical-postgres
+      - tactical-backend
+    networks:
+      - proxy
+      - api-db
+      - redis
+
+  tactical-nginx:
+    image: tacticalrmm/tactical-nginx:1.6.1
+    user: "1000:1000"
+    restart: unless-stopped
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - tactical_data:/opt/tactical
+      - ./nginx-http.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - tactical-frontend
+      - tactical-backend
+      - tactical-websockets
+      - tactical-nats
+      - tactical-meshcentral
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H 'Host: ${APP_HOST}' http://127.0.0.1:8080/ >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks:
+      - proxy
+      - dokploy-network
+
+  tactical-celery:
+    image: tacticalrmm/tactical:1.6.1
+    user: "1000:1000"
+    command: ["tactical-celery"]
+    restart: unless-stopped
+    volumes:
+      - tactical_data:/opt/tactical
+    depends_on:
+      - tactical-postgres
+      - tactical-redis
+    networks:
+      - redis
+      - proxy
+      - api-db
+
+  tactical-celerybeat:
+    image: tacticalrmm/tactical:1.6.1
+    user: "1000:1000"
+    command: ["tactical-celerybeat"]
+    restart: unless-stopped
+    volumes:
+      - tactical_data:/opt/tactical
+    depends_on:
+      - tactical-postgres
+      - tactical-redis
+    networks:
+      - proxy
+      - redis
+      - api-db
+
+volumes:
+  tactical_data:
+  postgres_data:
+  mongo_data:
+  mesh_data:
+  redis_data:
+
+networks:
+  proxy:
+  api-db:
+    internal: true
+  redis:
+    internal: true
+  mesh-db:
+    internal: true
+  dokploy-network:
+    external: true
