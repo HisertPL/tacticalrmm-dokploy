@@ -1,9 +1,15 @@
+x-main-node: &main-node
+  placement:
+    constraints:
+      - node.hostname == dokploy-main01
+
 services:
   tactical-permissions:
     image: alpine:3.22
     user: "0:0"
     restart: "no"
     deploy:
+      <<: *main-node
       restart_policy:
         condition: none
     command:
@@ -19,6 +25,8 @@ services:
   tactical-postgres:
     image: postgres:13-alpine
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     environment:
       POSTGRES_DB: tacticalrmm
       POSTGRES_USER: ${POSTGRES_USER}
@@ -38,6 +46,8 @@ services:
     user: "1000:1000"
     command: redis-server
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     volumes:
       - redis_data:/data
     healthcheck:
@@ -54,6 +64,8 @@ services:
     image: mongo:4.4
     user: "1000:1000"
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
@@ -69,6 +81,8 @@ services:
     image: tacticalrmm/tactical-meshcentral:1.6.1
     user: "1000:1000"
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     environment:
       MESH_HOST: ${MESH_HOST}
       MESH_USER: ${MESH_USER}
@@ -96,6 +110,7 @@ services:
     image: tacticalrmm/tactical:1.6.1
     restart: on-failure
     deploy:
+      <<: *main-node
       restart_policy:
         condition: on-failure
     command: ["tactical-init"]
@@ -132,6 +147,8 @@ services:
     image: tacticalrmm/tactical-nats:1.6.1
     user: "1000:1000"
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     environment:
       API_HOST: ${API_HOST}
     volumes:
@@ -146,6 +163,8 @@ services:
     image: tacticalrmm/tactical-frontend:1.6.1
     user: "1000:1000"
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     environment:
       API_HOST: ${API_HOST}
     volumes:
@@ -158,6 +177,8 @@ services:
     user: "1000:1000"
     command: ["tactical-backend"]
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     volumes:
       - tactical_data:/opt/tactical
     depends_on:
@@ -172,6 +193,8 @@ services:
     user: "1000:1000"
     command: ["tactical-websockets"]
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     volumes:
       - tactical_data:/opt/tactical
     depends_on:
@@ -187,6 +210,7 @@ services:
     user: "1000:1000"
     restart: unless-stopped
     deploy:
+      <<: *main-node
       labels:
         - traefik.enable=true
         - traefik.docker.network=dokploy-network
@@ -230,6 +254,8 @@ services:
     user: "1000:1000"
     command: ["tactical-celery"]
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     volumes:
       - tactical_data:/opt/tactical
     depends_on:
@@ -245,6 +271,8 @@ services:
     user: "1000:1000"
     command: ["tactical-celerybeat"]
     restart: unless-stopped
+    deploy:
+      <<: *main-node
     volumes:
       - tactical_data:/opt/tactical
     depends_on:
