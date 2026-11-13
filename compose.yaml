@@ -45,8 +45,7 @@ services:
     networks:
       - redis
     depends_on:
-      tactical-permissions:
-        condition: service_completed_successfully
+      - tactical-permissions
 
   tactical-mongodb:
     image: mongo:4.4
@@ -61,8 +60,7 @@ services:
     networks:
       - mesh-db
     depends_on:
-      tactical-permissions:
-        condition: service_completed_successfully
+      - tactical-permissions
 
   tactical-meshcentral:
     image: tacticalrmm/tactical-meshcentral:1.6.1
@@ -83,10 +81,8 @@ services:
       - tactical_data:/opt/tactical
       - mesh_data:/home/node/app/meshcentral-data
     depends_on:
-      tactical-permissions:
-        condition: service_completed_successfully
-      tactical-mongodb:
-        condition: service_started
+      - tactical-permissions
+      - tactical-mongodb
     networks:
       proxy:
         aliases:
@@ -117,14 +113,10 @@ services:
       - mongo_data:/mongo/data/db
       - redis_data:/redis/data
     depends_on:
-      tactical-permissions:
-        condition: service_completed_successfully
-      tactical-postgres:
-        condition: service_healthy
-      tactical-meshcentral:
-        condition: service_started
-      tactical-redis:
-        condition: service_healthy
+      - tactical-permissions
+      - tactical-postgres
+      - tactical-meshcentral
+      - tactical-redis
     networks:
       - api-db
       - proxy
