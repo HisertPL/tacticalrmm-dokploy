@@ -3,6 +3,9 @@ services:
     image: alpine:3.22
     user: "0:0"
     restart: "no"
+    deploy:
+      restart_policy:
+        condition: none
     command:
       - sh
       - -c
@@ -92,6 +95,9 @@ services:
   tactical-init:
     image: tacticalrmm/tactical:1.6.1
     restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
     command: ["tactical-init"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -180,6 +186,23 @@ services:
     image: tacticalrmm/tactical-nginx:1.6.1
     user: "1000:1000"
     restart: unless-stopped
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=dokploy-network
+        - traefik.http.routers.tactical-rmm-dashboard.entrypoints=web
+        - traefik.http.routers.tactical-rmm-dashboard.rule=Host(`rmm.hisert.it`)
+        - traefik.http.routers.tactical-rmm-dashboard.service=tactical-rmm-origin
+        - traefik.http.routers.tactical-rmm-api.entrypoints=web
+        - traefik.http.routers.tactical-rmm-api.rule=Host(`api-rmm.hisert.it`)
+        - traefik.http.routers.tactical-rmm-api.service=tactical-rmm-origin
+        - traefik.http.routers.tactical-rmm-mesh.entrypoints=web
+        - traefik.http.routers.tactical-rmm-mesh.rule=Host(`mesh-rmm.hisert.it`)
+        - traefik.http.routers.tactical-rmm-mesh.service=tactical-rmm-origin
+        - traefik.http.services.tactical-rmm-origin.loadbalancer.server.port=8080
+      restart_policy:
+        condition: any
+        delay: 5s
     entrypoint: ["nginx", "-g", "daemon off;"]
     volumes:
       - tactical_data:/opt/tactical
