@@ -74,6 +74,10 @@ services:
       MESH_PASS: ${MESH_PASS}
       MONGODB_USER: ${MONGODB_USER}
       MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+      # MeshCentral fetches the public TLS certificate from Cloudflare while
+      # the Dokploy origin itself remains HTTP-only.
+      NGINX_HOST_IP: ${MESH_HOST}
+      NGINX_HOST_PORT: "443"
       MESH_PERSISTENT_CONFIG: "1"
     volumes:
       - tactical_data:/opt/tactical
