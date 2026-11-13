@@ -1,4 +1,18 @@
 services:
+  tactical-permissions:
+    image: alpine:3.22
+    user: "0:0"
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - chown -R 1000:1000 /tactical /mesh /mongo /redis
+    volumes:
+      - tactical_data:/tactical
+      - mesh_data:/mesh
+      - mongo_data:/mongo
+      - redis_data:/redis
+
   tactical-postgres:
     image: postgres:13-alpine
     restart: unless-stopped
@@ -30,6 +44,9 @@ services:
       retries: 12
     networks:
       - redis
+    depends_on:
+      tactical-permissions:
+        condition: service_completed_successfully
 
   tactical-mongodb:
     image: mongo:4.4
@@ -43,6 +60,9 @@ services:
       - mongo_data:/data/db
     networks:
       - mesh-db
+    depends_on:
+      tactical-permissions:
+        condition: service_completed_successfully
 
   tactical-meshcentral:
     image: tacticalrmm/tactical-meshcentral:1.6.1
@@ -59,7 +79,10 @@ services:
       - tactical_data:/opt/tactical
       - mesh_data:/home/node/app/meshcentral-data
     depends_on:
-      - tactical-mongodb
+      tactical-permissions:
+        condition: service_completed_successfully
+      tactical-mongodb:
+        condition: service_started
     networks:
       proxy:
         aliases:
@@ -90,9 +113,14 @@ services:
       - mongo_data:/mongo/data/db
       - redis_data:/redis/data
     depends_on:
-      - tactical-postgres
-      - tactical-meshcentral
-      - tactical-redis
+      tactical-permissions:
+        condition: service_completed_successfully
+      tactical-postgres:
+        condition: service_healthy
+      tactical-meshcentral:
+        condition: service_started
+      tactical-redis:
+        condition: service_healthy
     networks:
       - api-db
       - proxy
