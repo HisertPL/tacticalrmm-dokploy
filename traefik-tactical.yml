@@ -1,0 +1,22 @@
+http:
+  routers:
+    tactical-rmm-dashboard:
+      entryPoints:
+        - web
+      rule: Host(`rmm.hisert.it`)
+      service: tactical-rmm-origin
+    tactical-rmm-api:
+      entryPoints:
+        - web
+      rule: Host(`api-rmm.hisert.it`)
+      service: tactical-rmm-origin
+    tactical-rmm-mesh:
+      entryPoints:
+        - web
+      rule: Host(`mesh-rmm.hisert.it`)
+      service: tactical-rmm-origin
+  services:
+    tactical-rmm-origin:
+      loadBalancer:
+        servers:
+          - url: http://tactical-rmm-hisert-main-6hrtd1_tactical-nginx:8080
