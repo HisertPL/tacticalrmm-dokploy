@@ -101,10 +101,8 @@ services:
       - tactical-permissions
       - tactical-mongodb
     networks:
-      proxy:
-        aliases:
-          - ${MESH_HOST}
-      mesh-db: {}
+      - proxy
+      - mesh-db
 
   tactical-init:
     image: tacticalrmm/tactical:1.6.1
@@ -154,10 +152,8 @@ services:
     volumes:
       - tactical_data:/opt/tactical
     networks:
-      api-db: {}
-      proxy:
-        aliases:
-          - ${API_HOST}
+      - api-db
+      - proxy
 
   tactical-frontend:
     image: tacticalrmm/tactical-frontend:1.6.1
