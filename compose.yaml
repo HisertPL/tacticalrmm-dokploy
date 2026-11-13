@@ -215,7 +215,9 @@ services:
       - tactical-nats
       - tactical-meshcentral
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -H 'Host: ${APP_HOST}' http://127.0.0.1:8080/ >/dev/null"]
+      # The proxy itself can be healthy before Tactical's init job has brought
+      # the upstream UI online; accepting an upstream 502 breaks that cycle.
+      test: ["CMD-SHELL", "curl -sS -H 'Host: ${APP_HOST}' http://127.0.0.1:8080/ >/dev/null"]
       interval: 15s
       timeout: 5s
       retries: 20
