@@ -190,6 +190,7 @@ services:
       labels:
         - traefik.enable=true
         - traefik.docker.network=dokploy-network
+        - traefik.swarm.network=dokploy-network
         - traefik.http.routers.tactical-rmm-dashboard.entrypoints=web
         - traefik.http.routers.tactical-rmm-dashboard.rule=Host(`rmm.hisert.it`)
         - traefik.http.routers.tactical-rmm-dashboard.service=tactical-rmm-origin
